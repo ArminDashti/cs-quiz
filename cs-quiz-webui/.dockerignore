@@ -1,0 +1,7 @@
+.git
+.armin
+.cursor
+.env
+dist
+node_modules
+*.md

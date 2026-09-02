@@ -1,0 +1,7 @@
+.git
+.armin
+.cursor
+.env
+uploads
+**/*_test.go
+*.md

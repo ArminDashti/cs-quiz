@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+# Build from repo root: docker build -f dockerfile -t cs-quiz-webui:latest .
+
+FROM node:22-alpine AS build
+WORKDIR /src
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY index.html vite.config.ts tsconfig.json tsconfig.app.json tsconfig.node.json ./
+COPY tailwind.config.js postcss.config.js ./
+COPY public ./public
+COPY src ./src
+# Empty base URL → same-origin; nginx proxies /api, /health, /uploads to the API.
+ENV VITE_API_BASE_URL=
+RUN npm run build
+
+FROM nginx:1.27-alpine
+COPY --from=build /src/dist /usr/share/nginx/html
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+ENV API_HOST=cs-quiz-api \
+    API_PORT=8090
+EXPOSE 80

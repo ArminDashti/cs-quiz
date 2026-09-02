@@ -1,0 +1,57 @@
+name: cs-quiz
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cs-quiz-postgres
+    environment:
+      POSTGRES_USER: csquiz
+      POSTGRES_PASSWORD: csquiz
+      POSTGRES_DB: csquiz
+    ports:
+      - "5435:5432"
+    volumes:
+      - cs_quiz_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U csquiz -d csquiz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - t3-net
+    restart: "no"
+
+  cs-quiz-api:
+    # Image is built by .armin/docker-scripts/run-on-docker-*.ps1 (context = repo root).
+    image: ${IMAGE_TAG:-cs-quiz-api:latest}
+    container_name: cs-quiz-api
+    environment:
+      ADDR: ":${INTERNAL_PORT:-8090}"
+      DATABASE_URL: postgres://csquiz:csquiz@postgres:5432/csquiz?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      INVITE_CODE: ${INVITE_CODE:-csquiz}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-armin@local}
+      UPLOAD_DIR: uploads
+      MIGRATIONS_DIR: migrations
+    volumes:
+      - cs_quiz_uploads:/app/uploads
+    expose:
+      - "${INTERNAL_PORT:-8090}"
+    ports:
+      - target: ${INTERNAL_PORT:-8090}
+        published: ${PUBLISH_PORT-8090}
+        protocol: tcp
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - t3-net
+    restart: "no"
+
+networks:
+  t3-net:
+    name: ${DOCKER_NETWORK:-t3-net}
+    external: true
+
+volumes:
+  cs_quiz_pgdata:
+  cs_quiz_uploads:

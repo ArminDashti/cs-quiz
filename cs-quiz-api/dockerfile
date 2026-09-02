@@ -1,0 +1,26 @@
+# syntax=docker/dockerfile:1
+# Build from repo root: docker build -f dockerfile -t cs-quiz-api:latest .
+
+FROM golang:1.22-alpine AS build
+WORKDIR /src
+RUN apk add --no-cache git ca-certificates
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd/ ./cmd/
+COPY internal/ ./internal/
+COPY migrations/ ./migrations/
+RUN CGO_ENABLED=0 GOOS=linux go build -o /out/server ./cmd/server
+
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates tzdata \
+  && adduser -D -u 10001 appuser
+WORKDIR /app
+COPY --from=build /out/server /app/server
+COPY --from=build /src/migrations /app/migrations
+RUN mkdir -p /app/uploads/avatars && chown -R appuser:appuser /app
+USER appuser
+ENV ADDR=:8090 \
+    MIGRATIONS_DIR=migrations \
+    UPLOAD_DIR=uploads
+EXPOSE 8090
+CMD ["/app/server"]
