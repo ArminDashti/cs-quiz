@@ -35,7 +35,9 @@ export type Quiz = {
   id: string
   name: string
   slug: string
+  category: string
   description: string
+  attachments: string[]
   enabled: boolean
   created_at: string
   updated_at: string
@@ -222,7 +224,9 @@ export function adminListQuizzes(): Promise<Quiz[]> {
 export function adminCreateQuiz(body: {
   name: string
   slug?: string
+  category?: string
   description?: string
+  attachments?: string[]
 }): Promise<Quiz> {
   return apiFetch<Quiz>('/api/v1/admin/quizzes', { method: 'POST', body: JSON.stringify(body) }, true)
 }
@@ -232,7 +236,9 @@ export function adminUpdateQuiz(
   body: {
     name?: string
     slug?: string
+    category?: string
     description?: string
+    attachments?: string[]
     enabled?: boolean
   },
 ): Promise<Quiz> {

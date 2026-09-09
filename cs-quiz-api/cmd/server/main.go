@@ -75,6 +75,7 @@ func main() {
 		api.GET("/profiles/:username", h.GetProfile)
 		api.GET("/quizzes", h.ListQuizzes)
 		api.GET("/quizzes/:slug", h.GetQuiz)
+		api.POST("/external/quizzes", h.ExternalIngest)
 
 		authed := api.Group("")
 		authed.Use(auth.Middleware(cfg.JWTSecret))

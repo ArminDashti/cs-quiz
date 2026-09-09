@@ -81,9 +81,29 @@ onMounted(async () => {
         <Card v-for="quiz in quizzes" :key="quiz.id">
           <CardHeader>
             <CardTitle>{{ quiz.name }}</CardTitle>
-            <CardDescription>{{ quiz.description }}</CardDescription>
+            <CardDescription>
+              <span v-if="quiz.category" class="mb-1 block text-xs font-medium uppercase tracking-wide text-primary">
+                {{ quiz.category }}
+              </span>
+              {{ quiz.description }}
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent class="space-y-3">
+            <p class="text-xs text-muted-foreground">
+              Created at {{ new Date(quiz.created_at).toLocaleString() }}
+            </p>
+            <div v-if="quiz.attachments?.length" class="flex flex-wrap gap-2 text-sm">
+              <a
+                v-for="(url, i) in quiz.attachments"
+                :key="`${quiz.id}-att-${i}`"
+                :href="url"
+                target="_blank"
+                rel="noreferrer"
+                class="text-primary underline"
+              >
+                Attachment {{ i + 1 }}
+              </a>
+            </div>
             <RouterLink :to="`/quiz/${quiz.slug}`">
               <Button class="gap-1.5" :disabled="!isAuthenticated">
                 <Play :size="14" aria-hidden="true" />

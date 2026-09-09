@@ -79,14 +79,23 @@ const (
 	DefaultUsername = "armin"
 	DefaultPassword = "dopadopa123"
 	DefaultEmail    = "armin@local"
+	AdminUsername   = "admin"
+	AdminEmail      = "admin@local"
 )
 
-// SeedDefaultUser upserts the default local login account (admin).
+// SeedDefaultUser upserts the default local login accounts (armin + admin).
 // passwordHash must already be a bcrypt hash of DefaultPassword.
 func SeedDefaultUser(ctx context.Context, db *sql.DB, passwordHash string) error {
+	if err := upsertDemoUser(ctx, db, DefaultEmail, passwordHash, "Armin", "Dashti", DefaultUsername); err != nil {
+		return err
+	}
+	return upsertDemoUser(ctx, db, AdminEmail, passwordHash, "Admin", "User", AdminUsername)
+}
+
+func upsertDemoUser(ctx context.Context, db *sql.DB, email, passwordHash, first, last, username string) error {
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO users (email, password_hash, first_name, last_name, username, is_admin)
-		VALUES ($1, $2, 'Armin', 'Dashti', $3, TRUE)
+		VALUES ($1, $2, $3, $4, $5, TRUE)
 		ON CONFLICT (email) DO UPDATE SET
 			password_hash = EXCLUDED.password_hash,
 			username = EXCLUDED.username,
@@ -94,7 +103,7 @@ func SeedDefaultUser(ctx context.Context, db *sql.DB, passwordHash string) error
 			last_name = EXCLUDED.last_name,
 			is_admin = TRUE,
 			updated_at = NOW()
-	`, DefaultEmail, passwordHash, DefaultUsername)
+	`, email, passwordHash, first, last, username)
 	return err
 }
 

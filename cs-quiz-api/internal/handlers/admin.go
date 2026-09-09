@@ -65,15 +65,25 @@ func (h *Handler) AdminListQuizzes(c *gin.Context) {
 // AdminCreateQuiz creates a quiz.
 func (h *Handler) AdminCreateQuiz(c *gin.Context) {
 	var req struct {
-		Name        string `json:"name" binding:"required"`
-		Slug        string `json:"slug"`
-		Description string `json:"description"`
+		Name        string   `json:"name"`
+		Title       string   `json:"title"`
+		Slug        string   `json:"slug"`
+		Category    string   `json:"category"`
+		Description string   `json:"description"`
+		Attachments []string `json:"attachments"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		writeError(c, http.StatusBadRequest, "invalid request")
 		return
 	}
 	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		name = strings.TrimSpace(req.Title)
+	}
+	if name == "" {
+		writeError(c, http.StatusBadRequest, "title required")
+		return
+	}
 	slug := strings.TrimSpace(req.Slug)
 	if slug == "" {
 		slug = slugify(name)
@@ -84,21 +94,29 @@ func (h *Handler) AdminCreateQuiz(c *gin.Context) {
 		writeError(c, http.StatusBadRequest, "invalid slug")
 		return
 	}
+	attJSON, err := encodeAttachments(req.Attachments)
+	if err != nil {
+		writeError(c, http.StatusBadRequest, "invalid attachments")
+		return
+	}
 
-	var q models.Quiz
-	err := h.db.QueryRowContext(c.Request.Context(), `
-		INSERT INTO quizzes (name, slug, description)
-		VALUES ($1, $2, $3)
-		RETURNING id, name, slug, description, enabled, created_at, updated_at
-	`, name, slug, strings.TrimSpace(req.Description)).Scan(
-		&q.ID, &q.Name, &q.Slug, &q.Description, &q.Enabled, &q.CreatedAt, &q.UpdatedAt,
-	)
+	var id string
+	err = h.db.QueryRowContext(c.Request.Context(), `
+		INSERT INTO quizzes (name, slug, category, description, attachments)
+		VALUES ($1, $2, $3, $4, $5::jsonb)
+		RETURNING id
+	`, name, slug, strings.TrimSpace(req.Category), strings.TrimSpace(req.Description), string(attJSON)).Scan(&id)
 	if err != nil {
 		if fmtUniqueViolation(err) {
 			writeError(c, http.StatusConflict, "quiz slug already exists")
 			return
 		}
 		writeError(c, http.StatusInternalServerError, "could not create quiz")
+		return
+	}
+	q, err := h.getQuizBySlug(c, slug)
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, "could not load quiz")
 		return
 	}
 	c.JSON(http.StatusCreated, q)
@@ -118,10 +136,13 @@ func (h *Handler) AdminUpdateQuiz(c *gin.Context) {
 	}
 
 	var req struct {
-		Name        *string `json:"name"`
-		Slug        *string `json:"slug"`
-		Description *string `json:"description"`
-		Enabled     *bool   `json:"enabled"`
+		Name        *string  `json:"name"`
+		Title       *string  `json:"title"`
+		Slug        *string  `json:"slug"`
+		Category    *string  `json:"category"`
+		Description *string  `json:"description"`
+		Attachments *[]string `json:"attachments"`
+		Enabled     *bool    `json:"enabled"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		writeError(c, http.StatusBadRequest, "invalid request")
@@ -130,10 +151,19 @@ func (h *Handler) AdminUpdateQuiz(c *gin.Context) {
 
 	name := q.Name
 	newSlug := q.Slug
+	category := q.Category
 	desc := q.Description
 	enabled := q.Enabled
+	attJSON, err := encodeAttachments(q.Attachments)
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, "invalid attachments")
+		return
+	}
 	if req.Name != nil {
 		name = strings.TrimSpace(*req.Name)
+	}
+	if req.Title != nil && strings.TrimSpace(*req.Title) != "" {
+		name = strings.TrimSpace(*req.Title)
 	}
 	if req.Slug != nil {
 		newSlug = slugify(*req.Slug)
@@ -142,26 +172,38 @@ func (h *Handler) AdminUpdateQuiz(c *gin.Context) {
 			return
 		}
 	}
+	if req.Category != nil {
+		category = strings.TrimSpace(*req.Category)
+	}
 	if req.Description != nil {
 		desc = strings.TrimSpace(*req.Description)
+	}
+	if req.Attachments != nil {
+		attJSON, err = encodeAttachments(*req.Attachments)
+		if err != nil {
+			writeError(c, http.StatusBadRequest, "invalid attachments")
+			return
+		}
 	}
 	if req.Enabled != nil {
 		enabled = *req.Enabled
 	}
 
-	err = h.db.QueryRowContext(c.Request.Context(), `
-		UPDATE quizzes SET name = $1, slug = $2, description = $3, enabled = $4, updated_at = NOW()
-		WHERE id = $5
-		RETURNING id, name, slug, description, enabled, created_at, updated_at
-	`, name, newSlug, desc, enabled, q.ID).Scan(
-		&q.ID, &q.Name, &q.Slug, &q.Description, &q.Enabled, &q.CreatedAt, &q.UpdatedAt,
-	)
+	_, err = h.db.ExecContext(c.Request.Context(), `
+		UPDATE quizzes SET name = $1, slug = $2, category = $3, description = $4, attachments = $5::jsonb, enabled = $6, updated_at = NOW()
+		WHERE id = $7
+	`, name, newSlug, category, desc, string(attJSON), enabled, q.ID)
 	if err != nil {
 		if fmtUniqueViolation(err) {
 			writeError(c, http.StatusConflict, "quiz slug already exists")
 			return
 		}
 		writeError(c, http.StatusInternalServerError, "could not update quiz")
+		return
+	}
+	q, err = h.getQuizBySlug(c, newSlug)
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, "could not load quiz")
 		return
 	}
 	c.JSON(http.StatusOK, q)

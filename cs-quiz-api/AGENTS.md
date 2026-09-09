@@ -31,7 +31,10 @@ runtime dependencies are the Go toolchain (installed) and a reachable PostgreSQL
 
 ### Auth / test flow
 
-- Default local account (seeded on every startup): username `armin` / password `dopadopa123` (admin).
+- Default local accounts (seeded on every startup):
+  - username `armin` / password `dopadopa123` (admin)
+  - username `admin` / password `dopadopa123` (admin)
+- External ingest: `POST /api/v1/external/quizzes` with header `X-API-Key: <EXTERNAL_API_KEY>`.
 - Registration is gated by an invite code (default `csquiz`, from `INVITE_CODE`).
 - Whoever registers/logs in with `ADMIN_EMAIL` (default `armin@local`) is granted admin.
 - Quick end-to-end check: `GET /health` → login as `armin` → `GET /api/v1/quizzes/csharp/play`

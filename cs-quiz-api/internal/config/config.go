@@ -39,25 +39,27 @@ func LoadDotEnv(path string) {
 
 // Config holds runtime settings for the API.
 type Config struct {
-	Addr         string
-	DatabaseURL  string
-	JWTSecret    string
-	InviteCode   string
-	AdminEmail   string
-	UploadDir    string
-	MigrationsDir string
+	Addr            string
+	DatabaseURL     string
+	JWTSecret       string
+	InviteCode      string
+	AdminEmail      string
+	UploadDir       string
+	MigrationsDir   string
+	ExternalAPIKey  string
 }
 
 // Load reads configuration from environment variables.
 func Load() Config {
 	return Config{
-		Addr:          envOr("ADDR", ":8090"),
-		DatabaseURL:   os.Getenv("DATABASE_URL"),
-		JWTSecret:     envOr("JWT_SECRET", "dev-jwt-secret-change-me"),
-		InviteCode:    envOr("INVITE_CODE", "csquiz"),
-		AdminEmail:    strings.ToLower(strings.TrimSpace(envOr("ADMIN_EMAIL", "armin@local"))),
-		UploadDir:     envOr("UPLOAD_DIR", "uploads"),
-		MigrationsDir: envOr("MIGRATIONS_DIR", "migrations"),
+		Addr:           envOr("ADDR", ":8090"),
+		DatabaseURL:    os.Getenv("DATABASE_URL"),
+		JWTSecret:      envOr("JWT_SECRET", "dev-jwt-secret-change-me"),
+		InviteCode:     envOr("INVITE_CODE", "csquiz"),
+		AdminEmail:     strings.ToLower(strings.TrimSpace(envOr("ADMIN_EMAIL", "armin@local"))),
+		UploadDir:      envOr("UPLOAD_DIR", "uploads"),
+		MigrationsDir:  envOr("MIGRATIONS_DIR", "migrations"),
+		ExternalAPIKey: os.Getenv("EXTERNAL_API_KEY"),
 	}
 }
 

@@ -20,9 +20,11 @@ type User struct {
 // Quiz is a named quiz topic.
 type Quiz struct {
 	ID          string    `json:"id"`
-	Name        string    `json:"name"`
+	Name        string    `json:"name"` // title in the UI
 	Slug        string    `json:"slug"`
+	Category    string    `json:"category"`
 	Description string    `json:"description"`
+	Attachments []string  `json:"attachments"`
 	Enabled     bool      `json:"enabled"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`

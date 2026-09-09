@@ -30,6 +30,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       INVITE_CODE: ${INVITE_CODE:-csquiz}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-armin@local}
+      EXTERNAL_API_KEY: ${EXTERNAL_API_KEY:-csquiz-external-key}
       UPLOAD_DIR: uploads
       MIGRATIONS_DIR: migrations
     volumes:

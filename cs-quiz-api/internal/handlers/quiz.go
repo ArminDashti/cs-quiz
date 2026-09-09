@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -14,11 +15,41 @@ func scanQuiz(row interface {
 	Scan(dest ...any) error
 }) (models.Quiz, error) {
 	var q models.Quiz
-	err := row.Scan(&q.ID, &q.Name, &q.Slug, &q.Description, &q.Enabled, &q.CreatedAt, &q.UpdatedAt)
-	return q, err
+	var attRaw []byte
+	err := row.Scan(&q.ID, &q.Name, &q.Slug, &q.Category, &q.Description, &attRaw, &q.Enabled, &q.CreatedAt, &q.UpdatedAt)
+	if err != nil {
+		return q, err
+	}
+	q.Attachments = decodeAttachments(attRaw)
+	return q, nil
 }
 
-const quizSelect = `SELECT id, name, slug, description, enabled, created_at, updated_at FROM quizzes`
+func decodeAttachments(raw []byte) []string {
+	if len(raw) == 0 {
+		return []string{}
+	}
+	var out []string
+	if err := json.Unmarshal(raw, &out); err != nil || out == nil {
+		return []string{}
+	}
+	return out
+}
+
+func encodeAttachments(list []string) ([]byte, error) {
+	if list == nil {
+		list = []string{}
+	}
+	clean := make([]string, 0, len(list))
+	for _, a := range list {
+		a = strings.TrimSpace(a)
+		if a != "" {
+			clean = append(clean, a)
+		}
+	}
+	return json.Marshal(clean)
+}
+
+const quizSelect = `SELECT id, name, slug, category, description, attachments, enabled, created_at, updated_at FROM quizzes`
 
 func (h *Handler) getQuizBySlug(c *gin.Context, slug string) (models.Quiz, error) {
 	return scanQuiz(h.db.QueryRowContext(c.Request.Context(), quizSelect+` WHERE slug = $1`, slug))

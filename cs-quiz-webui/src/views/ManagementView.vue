@@ -28,8 +28,21 @@ const errorMessage = ref<string | null>(null)
 const editOpen = ref(false)
 const editing = ref<Quiz | null>(null)
 const editName = ref('')
+const editCategory = ref('')
 const editDescription = ref('')
+const editAttachments = ref('')
 const editSaving = ref(false)
+
+function parseAttachments(raw: string): string[] {
+  return raw
+    .split(/\r?\n|,/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+function formatAttachments(list: string[] | undefined): string {
+  return (list ?? []).join('\n')
+}
 
 async function load() {
   errorMessage.value = null
@@ -61,7 +74,9 @@ async function saveInvite() {
 function openEdit(quiz: Quiz) {
   editing.value = quiz
   editName.value = quiz.name
+  editCategory.value = quiz.category || ''
   editDescription.value = quiz.description
+  editAttachments.value = formatAttachments(quiz.attachments)
   editOpen.value = true
 }
 
@@ -72,7 +87,9 @@ async function saveEdit() {
   try {
     await adminUpdateQuiz(editing.value.slug, {
       name: editName.value.trim(),
+      category: editCategory.value.trim(),
       description: editDescription.value.trim(),
+      attachments: parseAttachments(editAttachments.value),
     })
     editOpen.value = false
     await load()
@@ -142,11 +159,13 @@ function formatDate(iso: string): string {
     <p v-if="errorMessage" class="text-sm text-red-600 dark:text-red-400">{{ errorMessage }}</p>
 
     <div class="overflow-x-auto rounded-md border border-border">
-      <table class="w-full min-w-[720px] border-collapse text-sm">
+      <table class="w-full min-w-[960px] border-collapse text-sm">
         <thead class="bg-muted/50 text-left">
           <tr>
             <th class="px-3 py-2 font-medium">Title</th>
+            <th class="px-3 py-2 font-medium">Category</th>
             <th class="px-3 py-2 font-medium">Description</th>
+            <th class="px-3 py-2 font-medium">Attachments</th>
             <th class="px-3 py-2 font-medium">Created at</th>
             <th class="px-3 py-2 font-medium">Edit</th>
             <th class="px-3 py-2 font-medium">Questions</th>
@@ -160,8 +179,25 @@ function formatDate(iso: string): string {
               {{ quiz.name }}
               <span v-if="!quiz.enabled" class="ml-1 text-xs text-muted-foreground">(disabled)</span>
             </td>
+            <td class="px-3 py-2 align-middle text-muted-foreground">
+              {{ quiz.category || '—' }}
+            </td>
             <td class="max-w-xs truncate px-3 py-2 align-middle text-muted-foreground">
               {{ quiz.description || '—' }}
+            </td>
+            <td class="max-w-[12rem] truncate px-3 py-2 align-middle text-muted-foreground">
+              <template v-if="quiz.attachments?.length">
+                <a
+                  v-for="(url, i) in quiz.attachments"
+                  :key="`${quiz.id}-${i}`"
+                  :href="url"
+                  class="mr-1 text-primary underline"
+                  target="_blank"
+                  rel="noreferrer"
+                  >{{ i + 1 }}</a
+                >
+              </template>
+              <span v-else>—</span>
             </td>
             <td class="whitespace-nowrap px-3 py-2 align-middle text-muted-foreground">
               {{ formatDate(quiz.created_at) }}
@@ -200,7 +236,7 @@ function formatDate(iso: string): string {
             </td>
           </tr>
           <tr v-if="quizzes.length === 0">
-            <td colspan="7" class="px-3 py-6 text-center text-muted-foreground">No quizzes yet.</td>
+            <td colspan="9" class="px-3 py-6 text-center text-muted-foreground">No quizzes yet.</td>
           </tr>
         </tbody>
       </table>
@@ -222,11 +258,27 @@ function formatDate(iso: string): string {
           />
         </label>
         <label class="block space-y-1 text-sm">
+          <span>Category</span>
+          <input
+            v-model="editCategory"
+            class="w-full rounded-md border border-input bg-background px-3 py-2"
+          />
+        </label>
+        <label class="block space-y-1 text-sm">
           <span>Description</span>
           <textarea
             v-model="editDescription"
             rows="3"
             class="w-full rounded-md border border-input bg-background px-3 py-2"
+          />
+        </label>
+        <label class="block space-y-1 text-sm">
+          <span>Attachments (one URL per line)</span>
+          <textarea
+            v-model="editAttachments"
+            rows="3"
+            class="w-full rounded-md border border-input bg-background px-3 py-2"
+            placeholder="https://example.com/file.pdf"
           />
         </label>
         <div class="flex justify-end gap-2">

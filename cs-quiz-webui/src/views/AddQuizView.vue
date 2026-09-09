@@ -14,9 +14,18 @@ import { adminCreateQuiz } from '@/lib/auth'
 const router = useRouter()
 const name = ref('')
 const slug = ref('')
+const category = ref('')
 const description = ref('')
+const attachments = ref('')
 const errorMessage = ref<string | null>(null)
 const submitting = ref(false)
+
+function parseAttachments(raw: string): string[] {
+  return raw
+    .split(/\r?\n|,/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
 
 async function onSubmit() {
   errorMessage.value = null
@@ -25,7 +34,9 @@ async function onSubmit() {
     const quiz = await adminCreateQuiz({
       name: name.value.trim(),
       slug: slug.value.trim() || undefined,
+      category: category.value.trim(),
       description: description.value.trim(),
+      attachments: parseAttachments(attachments.value),
     })
     await router.push(`/management/quiz/${quiz.slug}/add-question`)
   } catch (err) {
@@ -46,7 +57,7 @@ async function onSubmit() {
       <CardContent>
         <form class="space-y-3" @submit.prevent="onSubmit">
           <label class="block space-y-1 text-sm">
-            <span>Name</span>
+            <span>Title</span>
             <input
               v-model="name"
               required
@@ -54,10 +65,17 @@ async function onSubmit() {
             />
           </label>
           <label class="block space-y-1 text-sm">
+            <span>Category</span>
+            <input
+              v-model="category"
+              class="w-full rounded-md border border-input bg-background px-3 py-2"
+            />
+          </label>
+          <label class="block space-y-1 text-sm">
             <span>Slug (optional)</span>
             <input
               v-model="slug"
-              placeholder="auto from name"
+              placeholder="auto from title"
               class="w-full rounded-md border border-input bg-background px-3 py-2"
             />
           </label>
@@ -67,6 +85,15 @@ async function onSubmit() {
               v-model="description"
               rows="3"
               class="w-full rounded-md border border-input bg-background px-3 py-2"
+            />
+          </label>
+          <label class="block space-y-1 text-sm">
+            <span>Attachments (one URL per line)</span>
+            <textarea
+              v-model="attachments"
+              rows="3"
+              class="w-full rounded-md border border-input bg-background px-3 py-2"
+              placeholder="https://example.com/file.pdf"
             />
           </label>
           <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
