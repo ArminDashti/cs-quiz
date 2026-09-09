@@ -1,0 +1,16 @@
+﻿# Local cs-quiz update + T3 check
+
+Date: 2026-09-09
+
+## Commands
+- Local: `docker compose -f docker-compose.local.yml -p cs-quiz up -d --force-recreate` (cs-quiz-api)
+- T3 SSH: paramiko port 443 with `id_ed25519_cloud-admin_2-144-27-74` (Host `t3`)
+
+## Result
+- Local stack up: postgres, api (:8175), webui (:5175)
+- Verified: health, login armin+admin, quiz fields, POST /api/v1/external/quizzes
+- T3: no cs-quiz containers/volumes present (geoquiz exists). Update-only deploy blocked; needs first publish + public hostname.
+
+## Warnings
+- SSH MCP irancell-t3 port 22 times out; use port 443
+- Skill key name `…2-144-27-124` missing locally; actual key is `…2-144-27-74`
