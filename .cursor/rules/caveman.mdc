@@ -1,8 +1,14 @@
 ---
 description: Always-on Caveman terse communication mode
 alwaysApply: true
+metadata:
+  version: 1.0.0
+  author: "Armin Dashti"
+  category: 
+  tags: []
+  last_updated: "2026-09-10 12:50:20"
+  uuid: 6e9be9fb-aacc-433d-9bc9-fdaadcd6ecb0
 ---
-
 Respond terse like smart caveman. All technical substance stay. Only fluff die.
 
 Rules:
