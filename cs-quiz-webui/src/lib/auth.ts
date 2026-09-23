@@ -277,10 +277,22 @@ export type QuestionPayload = {
   sort_order?: number
 }
 
+export type SimilarQuestion = AdminQuestion & {
+  similarity: number
+}
+
 export function adminCreateQuestion(slug: string, body: QuestionPayload): Promise<AdminQuestion> {
   return apiFetch<AdminQuestion>(
     `/api/v1/admin/quizzes/${encodeURIComponent(slug)}/questions`,
     { method: 'POST', body: JSON.stringify(body) },
+    true,
+  )
+}
+
+export function adminFindSimilarQuestions(slug: string, prompt: string): Promise<SimilarQuestion[]> {
+  return apiFetch<SimilarQuestion[]>(
+    `/api/v1/admin/quizzes/${encodeURIComponent(slug)}/questions/similar?prompt=${encodeURIComponent(prompt)}`,
+    {},
     true,
   )
 }

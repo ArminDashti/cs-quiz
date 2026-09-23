@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/ArminDashti/cs-quiz-api/internal/config"
@@ -26,6 +27,59 @@ func New(db *sql.DB, cfg config.Config) *Handler {
 // Health returns a simple liveness payload.
 func (h *Handler) Health(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+// RecordVisit stores basic request metadata for usage analytics. It intentionally
+// records no credentials, request bodies, or authentication tokens.
+func (h *Handler) RecordVisit() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.Method != http.MethodOptions {
+			ip := c.ClientIP()
+			os, browser := visitClient(c.GetHeader("User-Agent"))
+			_, _ = h.db.ExecContext(c.Request.Context(), `
+				INSERT INTO visit_logs (ip_address, operating_system, browser, path)
+				VALUES ($1, $2, $3, $4)
+			`, ip, os, browser, c.Request.URL.Path)
+		}
+		c.Next()
+	}
+}
+
+var browserVersion = regexp.MustCompile(`(?:edg|opr|chrome|firefox|version)/([0-9.]+)`)
+
+func visitClient(userAgent string) (string, string) {
+	ua := strings.ToLower(userAgent)
+	os := "Unknown"
+	switch {
+	case strings.Contains(ua, "windows"):
+		os = "Windows"
+	case strings.Contains(ua, "android"):
+		os = "Android"
+	case strings.Contains(ua, "iphone") || strings.Contains(ua, "ipad"):
+		os = "iOS"
+	case strings.Contains(ua, "mac os") || strings.Contains(ua, "macintosh"):
+		os = "macOS"
+	case strings.Contains(ua, "linux"):
+		os = "Linux"
+	}
+
+	browser := "Unknown"
+	switch {
+	case strings.Contains(ua, "edg/"):
+		browser = "Edge"
+	case strings.Contains(ua, "opr/"):
+		browser = "Opera"
+	case strings.Contains(ua, "firefox/"):
+		browser = "Firefox"
+	case strings.Contains(ua, "chrome/"):
+		browser = "Chrome"
+	case strings.Contains(ua, "safari/"):
+		browser = "Safari"
+	}
+	if match := browserVersion.FindStringSubmatch(ua); len(match) == 2 && browser != "Unknown" {
+		browser += " " + match[1]
+	}
+	return os, browser
 }
 
 func (h *Handler) avatarURL(avatarPath *string) *string {
