@@ -9,7 +9,7 @@ function systemPrefersDark(): boolean {
 export function getTheme(): Theme {
   const stored = localStorage.getItem(THEME_KEY)
   if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
-  return 'system'
+  return 'dark'
 }
 
 export function resolveTheme(theme: Theme = getTheme()): 'light' | 'dark' {

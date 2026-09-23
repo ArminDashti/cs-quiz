@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import {
   adminCreateQuestion,
+  adminFindSimilarQuestions,
   adminUpdateQuestion,
   type AdminQuestion,
   type QuestionPayload,
+  type SimilarQuestion,
 } from '@/lib/auth'
 
 const props = defineProps<{
@@ -30,6 +32,8 @@ const questionType = ref('multiple_choice')
 const difficulty = ref<'easy' | 'medium' | 'hard'>('medium')
 const errorMessage = ref<string | null>(null)
 const submitting = ref(false)
+const similarQuestions = ref<SimilarQuestion[]>([])
+const duplicatesCheckedFor = ref('')
 
 const isEdit = () => Boolean(props.question?.id)
 
@@ -56,6 +60,8 @@ function resetFromQuestion() {
     difficulty.value = 'medium'
   }
   errorMessage.value = null
+  similarQuestions.value = []
+  duplicatesCheckedFor.value = ''
 }
 
 watch(
@@ -71,9 +77,14 @@ function close() {
 
 async function onSubmit() {
   errorMessage.value = null
+  const trimmedPrompt = prompt.value.trim()
+  if (trimmedPrompt.length < 3) {
+    errorMessage.value = 'Enter a question prompt with at least 3 characters.'
+    return
+  }
   submitting.value = true
   const body: QuestionPayload = {
-    prompt: prompt.value.trim(),
+    prompt: trimmedPrompt,
     option_a: optionA.value.trim(),
     option_b: optionB.value.trim(),
     option_c: optionC.value.trim(),
@@ -83,6 +94,13 @@ async function onSubmit() {
     difficulty: difficulty.value,
   }
   try {
+    if (duplicatesCheckedFor.value !== trimmedPrompt) {
+      similarQuestions.value = await adminFindSimilarQuestions(props.quizName, trimmedPrompt)
+      duplicatesCheckedFor.value = trimmedPrompt
+      if (similarQuestions.value.some((question) => question.id !== props.question?.id)) {
+        return
+      }
+    }
     if (isEdit() && props.question) {
       await adminUpdateQuestion(props.quizName, props.question.id, body)
     } else {
@@ -95,6 +113,12 @@ async function onSubmit() {
   } finally {
     submitting.value = false
   }
+}
+
+function continueDespiteMatches() {
+  duplicatesCheckedFor.value = prompt.value.trim()
+  similarQuestions.value = []
+  void onSubmit()
 }
 </script>
 
@@ -115,6 +139,18 @@ async function onSubmit() {
           class="w-full rounded-md border border-input bg-background px-3 py-2"
         />
       </label>
+      <div v-if="similarQuestions.length" class="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+        <p class="font-medium text-amber-700 dark:text-amber-300">Similar questions found</p>
+        <p class="mt-1 text-muted-foreground">Review these matches before deciding whether to save this question.</p>
+        <ul class="mt-2 list-disc space-y-1 pl-5">
+          <li v-for="match in similarQuestions" :key="match.id">
+            {{ Math.round(match.similarity * 100) }}% — {{ match.prompt }}
+          </li>
+        </ul>
+        <Button type="button" variant="outline" size="sm" class="mt-3" @click="continueDespiteMatches">
+          Save anyway
+        </Button>
+      </div>
       <label class="block space-y-1 text-sm">
         <span>Option A</span>
         <input v-model="optionA" required class="w-full rounded-md border border-input bg-background px-3 py-2" />

@@ -53,6 +53,7 @@ func main() {
 
 	h := handlers.New(sqlDB, cfg)
 	r := gin.Default()
+	r.Use(h.RecordVisit())
 
 	r.Use(cors.New(cors.Config{
 		AllowOriginFunc: func(origin string) bool {
@@ -99,6 +100,7 @@ func main() {
 				admin.PATCH("/quizzes/:slug", h.AdminUpdateQuiz)
 				admin.DELETE("/quizzes/:slug", h.AdminDeleteQuiz)
 				admin.GET("/quizzes/:slug/questions", h.AdminListQuestions)
+				admin.GET("/quizzes/:slug/questions/similar", h.AdminFindSimilarQuestions)
 				admin.POST("/quizzes/:slug/questions", h.AdminCreateQuestion)
 				admin.PATCH("/quizzes/:slug/questions/:id", h.AdminUpdateQuestion)
 				admin.DELETE("/quizzes/:slug/questions/:id", h.AdminDeleteQuestion)

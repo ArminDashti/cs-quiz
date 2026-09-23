@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
+	"sort"
 	"strings"
 
 	appdb "github.com/ArminDashti/cs-quiz-api/internal/db"
@@ -136,13 +137,13 @@ func (h *Handler) AdminUpdateQuiz(c *gin.Context) {
 	}
 
 	var req struct {
-		Name        *string  `json:"name"`
-		Title       *string  `json:"title"`
-		Slug        *string  `json:"slug"`
-		Category    *string  `json:"category"`
-		Description *string  `json:"description"`
+		Name        *string   `json:"name"`
+		Title       *string   `json:"title"`
+		Slug        *string   `json:"slug"`
+		Category    *string   `json:"category"`
+		Description *string   `json:"description"`
 		Attachments *[]string `json:"attachments"`
-		Enabled     *bool    `json:"enabled"`
+		Enabled     *bool     `json:"enabled"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		writeError(c, http.StatusBadRequest, "invalid request")
@@ -296,6 +297,87 @@ func (h *Handler) AdminListQuestions(c *gin.Context) {
 		out = append(out, q)
 	}
 	c.JSON(http.StatusOK, out)
+}
+
+// AdminFindSimilarQuestions returns prompt matches before an editor or external
+// agent creates or updates a question. It is scoped to the selected quiz.
+func (h *Handler) AdminFindSimilarQuestions(c *gin.Context) {
+	slug := strings.TrimSpace(c.Param("slug"))
+	quiz, err := h.getQuizBySlug(c, slug)
+	if err == sql.ErrNoRows {
+		writeError(c, http.StatusNotFound, "quiz not found")
+		return
+	}
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, "could not load quiz")
+		return
+	}
+	prompt := strings.TrimSpace(c.Query("prompt"))
+	if len(prompt) < 3 {
+		writeError(c, http.StatusBadRequest, "prompt must contain at least 3 characters")
+		return
+	}
+
+	rows, err := h.db.QueryContext(c.Request.Context(), questionAdminSelect+`
+		WHERE quiz_id = $1`, quiz.ID)
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, "could not compare questions")
+		return
+	}
+	defer rows.Close()
+
+	type match struct {
+		models.Question
+		Similarity float64 `json:"similarity"`
+	}
+	out := make([]match, 0)
+	for rows.Next() {
+		var item match
+		var correct int
+		if err := rows.Scan(&item.ID, &item.QuizID, &item.Prompt, &item.OptionA, &item.OptionB, &item.OptionC, &item.OptionD,
+			&correct, &item.QuestionType, &item.Difficulty, &item.SortOrder, &item.CreatedAt, &item.UpdatedAt); err != nil {
+			writeError(c, http.StatusInternalServerError, "could not compare questions")
+			return
+		}
+		item.CorrectIndex = &correct
+		item.Similarity = questionSimilarity(prompt, item.Prompt)
+		if item.Similarity >= 0.35 {
+			out = append(out, item)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Similarity > out[j].Similarity })
+	if len(out) > 10 {
+		out = out[:10]
+	}
+	c.JSON(http.StatusOK, out)
+}
+
+// questionSimilarity calculates Jaccard similarity over normalized words. It is
+// deterministic, database-independent, and suitable for surfacing a review
+// warning rather than silently rejecting a human or agent's question.
+func questionSimilarity(left, right string) float64 {
+	words := func(value string) map[string]struct{} {
+		returnMap := make(map[string]struct{})
+		for _, word := range strings.FieldsFunc(strings.ToLower(value), func(r rune) bool {
+			return (r < 'a' || r > 'z') && (r < '0' || r > '9')
+		}) {
+			if len(word) > 1 {
+				returnMap[word] = struct{}{}
+			}
+		}
+		return returnMap
+	}
+	a, b := words(left), words(right)
+	if len(a) == 0 || len(b) == 0 {
+		return 0
+	}
+	intersection := 0
+	for word := range a {
+		if _, ok := b[word]; ok {
+			intersection++
+		}
+	}
+	return float64(intersection) / float64(len(a)+len(b)-intersection)
 }
 
 // AdminCreateQuestion adds a question to a quiz.
