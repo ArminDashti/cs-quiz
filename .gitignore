@@ -1,1 +1,4 @@
-(empty)
+(empty)*.exe
+
+# auto-managed large-file section (>5MB)
+# (paths appended by commit-push-to-github)
