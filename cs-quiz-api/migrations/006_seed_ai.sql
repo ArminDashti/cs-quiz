@@ -1,6 +1,6 @@
 INSERT INTO quizzes (name, slug, description, category)
 VALUES
-    ('AI & Agents', 'ai-agents', 'Artificial intelligence, LLMs, and AI agent concepts')
+    ('AI & Agents', 'ai-agents', 'Artificial intelligence, LLMs, and AI agent concepts', 'AI')
 ON CONFLICT (slug) DO NOTHING;
 
 UPDATE quizzes SET category = 'AI' WHERE slug = 'ai-agents' AND category = '';

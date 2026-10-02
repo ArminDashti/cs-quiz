@@ -2,3 +2,5 @@
 
 # auto-managed large-file section (>5MB)
 # (paths appended by commit-push-to-github)
+*.exe
+# commit-push-to-github: ignore files > 5MB
