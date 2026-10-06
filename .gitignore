@@ -4,3 +4,9 @@
 # (paths appended by commit-push-to-github)
 *.exe
 # commit-push-to-github: ignore files > 5MB
+
+# Auto-managed: files larger than 5 MB
+.gitnexus/lbug
+cs-quiz-webui/node_modules/@esbuild/win32-x64/esbuild.exe
+cs-quiz-webui/node_modules/typescript/lib/_tsc.js
+cs-quiz-webui/node_modules/typescript/lib/typescript.js
